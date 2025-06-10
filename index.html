@@ -622,279 +622,281 @@ window.deleteAdminProfileShift = function(key, i) {
   setProfiles(profiles);
   renderAdminProfiles();
 };
-// ========== PROFILE DATA & LOGIC ==========
+ <script>
+    // ========== PROFILE DATA & LOGIC ==========
 
-const defaultProfiles = {
-  john: {
-    username: "john",
-    password: "johnpass",
-    name: "John Doe",
-    schedule: "Mon-Fri, 9:00 AM - 5:00 PM",
-    lunch: "12:30 PM - 1:00 PM",
-    experience: "Front desk, Inventory, Customer Service",
-    jobs: [
-      { title: "Front Desk Clerk", duration: "2 yrs", hours: "9am-5pm", lunch: "12:30-1:00" }
-    ],
-    history: []
-  },
-  jane: {
-    username: "jane",
-    password: "janepass",
-    name: "Jane Doe",
-    schedule: "Tue-Sat, 1:00 PM - 9:00 PM",
-    lunch: "5:00 PM - 5:30 PM",
-    experience: "Supervisor, Staff Trainer",
-    jobs: [
-      { title: "Supervisor", duration: "3 yrs", hours: "1pm-9pm", lunch: "5:00-5:30" }
-    ],
-    history: []
-  },
-  bob: {
-    username: "bob",
-    password: "bobpass",
-    name: "Bob Smith",
-    schedule: "Mon-Fri, 6:00 AM - 2:00 PM",
-    lunch: "10:00 AM - 10:30 AM",
-    experience: "Maintenance, Deliveries",
-    jobs: [
-      { title: "Maintenance", duration: "4 yrs", hours: "6am-2pm", lunch: "10:00-10:30" }
-    ],
-    history: []
-  }
-};
-function getProfiles() {
-  return JSON.parse(localStorage.getItem('profiles') || JSON.stringify(defaultProfiles));
-}
-function setProfiles(profiles) {
-  localStorage.setItem('profiles', JSON.stringify(profiles));
-}
-function getProfileByUsername(username) {
-  const profiles = getProfiles();
-  for (const key in profiles) {
-    if (profiles[key].username === username) return {key, ...profiles[key]};
-  }
-  return null;
-}
-function updateProfileHistory(profileKey, shift) {
-  const profiles = getProfiles();
-  profiles[profileKey].history.unshift(shift);
-  setProfiles(profiles);
-}
-let currentProfileKey = null;
-let currentShift = null;
-function showProfileLogin() {
-  document.getElementById('profile-login-section').classList.remove('hidden');
-  document.getElementById('profile-main-section').classList.add('hidden');
-  document.getElementById('profile-login-username').value = '';
-  document.getElementById('profile-login-password').value = '';
-  document.getElementById('profile-login-message').textContent = '';
-  currentProfileKey = null;
-  currentShift = null;
-}
-function showProfileMain(profileKey) {
-  currentProfileKey = profileKey;
-  const profiles = getProfiles();
-  const profile = profiles[profileKey];
-  // Name
-  document.getElementById('profile-name-display').textContent = profile.name || "";
-  document.getElementById('profile-name-edit').value = profile.name || "";
-  // Schedule
-  document.getElementById('profile-schedule-display').textContent = profile.schedule || "";
-  document.getElementById('profile-schedule-edit').value = profile.schedule || "";
-  // Lunch
-  document.getElementById('profile-lunch-display').textContent = profile.lunch || "";
-  document.getElementById('profile-lunch-edit').value = profile.lunch || "";
-  // Experience
-  document.getElementById('profile-experience-display').textContent = profile.experience || "";
-  document.getElementById('profile-experience-edit').value = profile.experience || "";
-  // Current shift (show schedule)
-  document.getElementById('profile-current-shift').textContent = profile.schedule || "-";
-  // History
-  renderShiftHistory(profileKey);
-  document.getElementById('profile-login-section').classList.add('hidden');
-  document.getElementById('profile-main-section').classList.remove('hidden');
-  document.getElementById('profile-message').textContent = '';
-  // Reset clock-in/out/break buttons
-  document.getElementById('clock-in-btn').disabled = false;
-  document.getElementById('start-break-btn').disabled = true;
-  document.getElementById('end-break-btn').disabled = true;
-  document.getElementById('clock-out-btn').disabled = true;
-  document.getElementById('shift-status').textContent = '';
-  currentShift = null;
-}
-function renderShiftHistory(profileKey) {
-  const profiles = getProfiles();
-  const shifts = profiles[profileKey]?.history || [];
-  const cont = document.getElementById('profile-shift-history');
-  if(!cont) return;
-  if(!shifts || shifts.length === 0) {
-    cont.innerHTML = "<em>No shifts yet.</em>";
-    return;
-  }
-  // No edit/add/delete for regular users, just display
-  cont.innerHTML = shifts.map((s,i) => `
-    <div class="shift-history-block">
-      <b>Shift #${shifts.length-i}</b> (${s.date})
-      <ul>
-        <li><b>Clocked In:</b> ${s.clockIn || "-"}</li>
-        <li><b>Break Start:</b> ${s.breakStart || "-"}</li>
-        <li><b>Break End:</b> ${s.breakEnd || "-"}</li>
-        <li><b>Clocked Out:</b> ${s.clockOut || "-"}</li>
-      </ul>
-    </div>
-  `).join('');
-}
-function saveCurrentProfileField(field, value) {
-  if (!currentProfileKey) return;
-  const profiles = getProfiles();
-  profiles[currentProfileKey][field] = value;
-  setProfiles(profiles);
-}
-// Profile login form
-document.getElementById('profile-login-form').onsubmit = function(e) {
-  e.preventDefault();
-  const username = document.getElementById('profile-login-username').value.trim();
-  const password = document.getElementById('profile-login-password').value;
-  const profileObj = getProfileByUsername(username);
-  if (profileObj && profileObj.password === password) {
-    showProfileMain(profileObj.key);
-  } else {
-    document.getElementById('profile-login-message').textContent = "Invalid username or password.";
-  }
-};
-document.getElementById('profile-logout-btn').onclick = showProfileLogin;
-// Profile field edit/save/cancel logic
-function enableEdit(field) {
-  document.getElementById(`profile-${field}-display`).classList.add('hidden');
-  document.getElementById(`profile-${field}-edit`).classList.remove('hidden');
-  document.getElementById(`edit-profile-${field}-btn`).classList.add('hidden');
-  document.getElementById(`save-profile-${field}-btn`).classList.remove('hidden');
-  document.getElementById(`cancel-profile-${field}-btn`).classList.remove('hidden');
-}
-function disableEdit(field) {
-  document.getElementById(`profile-${field}-display`).classList.remove('hidden');
-  document.getElementById(`profile-${field}-edit`).classList.add('hidden');
-  document.getElementById(`edit-profile-${field}-btn`).classList.remove('hidden');
-  document.getElementById(`save-profile-${field}-btn`).classList.add('hidden');
-  document.getElementById(`cancel-profile-${field}-btn`).classList.add('hidden');
-}
-function saveField(field) {
-  let value;
-  if(field==="experience") {
-    value = document.getElementById(`profile-${field}-edit`).value;
-    document.getElementById(`profile-${field}-display`).textContent = value;
-  } else {
-    value = document.getElementById(`profile-${field}-edit`).value;
-    document.getElementById(`profile-${field}-display`).textContent = value;
-  }
-  saveCurrentProfileField(field, value);
-  disableEdit(field);
-  document.getElementById('profile-message').textContent = "Saved!";
-  setTimeout(()=>document.getElementById('profile-message').textContent="", 1200);
-}
-['name','schedule','lunch','experience'].forEach(field => {
-  document.getElementById(`edit-profile-${field}-btn`).onclick = ()=>enableEdit(field);
-  document.getElementById(`cancel-profile-${field}-btn`).onclick = ()=>disableEdit(field);
-  document.getElementById(`save-profile-${field}-btn`).onclick = ()=>saveField(field);
-});
+    const defaultProfiles = {
+      john: {
+        username: "john",
+        password: "johnpass",
+        name: "John Doe",
+        schedule: "Mon-Fri, 9:00 AM - 5:00 PM",
+        lunch: "12:30 PM - 1:00 PM",
+        experience: "Front desk, Inventory, Customer Service",
+        jobs: [
+          { title: "Front Desk Clerk", duration: "2 yrs", hours: "9am-5pm", lunch: "12:30-1:00" }
+        ],
+        history: []
+      },
+      jane: {
+        username: "jane",
+        password: "janepass",
+        name: "Jane Doe",
+        schedule: "Tue-Sat, 1:00 PM - 9:00 PM",
+        lunch: "5:00 PM - 5:30 PM",
+        experience: "Supervisor, Staff Trainer",
+        jobs: [
+          { title: "Supervisor", duration: "3 yrs", hours: "1pm-9pm", lunch: "5:00-5:30" }
+        ],
+        history: []
+      },
+      bob: {
+        username: "bob",
+        password: "bobpass",
+        name: "Bob Smith",
+        schedule: "Mon-Fri, 6:00 AM - 2:00 PM",
+        lunch: "10:00 AM - 10:30 AM",
+        experience: "Maintenance, Deliveries",
+        jobs: [
+          { title: "Maintenance", duration: "4 yrs", hours: "6am-2pm", lunch: "10:00-10:30" }
+        ],
+        history: []
+      }
+    };
+    function getProfiles() {
+      return JSON.parse(localStorage.getItem('profiles') || JSON.stringify(defaultProfiles));
+    }
+    function setProfiles(profiles) {
+      localStorage.setItem('profiles', JSON.stringify(profiles));
+    }
+    function getProfileByUsername(username) {
+      const profiles = getProfiles();
+      for (const key in profiles) {
+        if (profiles[key].username === username) return {key, ...profiles[key]};
+      }
+      return null;
+    }
+    function updateProfileHistory(profileKey, shift) {
+      const profiles = getProfiles();
+      profiles[profileKey].history.unshift(shift);
+      setProfiles(profiles);
+    }
+    let currentProfileKey = null;
+    let currentShift = null;
+    function showProfileLogin() {
+      document.getElementById('profile-login-section').classList.remove('hidden');
+      document.getElementById('profile-main-section').classList.add('hidden');
+      document.getElementById('profile-login-username').value = '';
+      document.getElementById('profile-login-password').value = '';
+      document.getElementById('profile-login-message').textContent = '';
+      currentProfileKey = null;
+      currentShift = null;
+    }
+    function showProfileMain(profileKey) {
+      currentProfileKey = profileKey;
+      const profiles = getProfiles();
+      const profile = profiles[profileKey];
+      // Name
+      document.getElementById('profile-name-display').textContent = profile.name || "";
+      document.getElementById('profile-name-edit').value = profile.name || "";
+      // Schedule
+      document.getElementById('profile-schedule-display').textContent = profile.schedule || "";
+      document.getElementById('profile-schedule-edit').value = profile.schedule || "";
+      // Lunch
+      document.getElementById('profile-lunch-display').textContent = profile.lunch || "";
+      document.getElementById('profile-lunch-edit').value = profile.lunch || "";
+      // Experience
+      document.getElementById('profile-experience-display').textContent = profile.experience || "";
+      document.getElementById('profile-experience-edit').value = profile.experience || "";
+      // Current shift (show schedule)
+      document.getElementById('profile-current-shift').textContent = profile.schedule || "-";
+      // History
+      renderShiftHistory(profileKey);
+      document.getElementById('profile-login-section').classList.add('hidden');
+      document.getElementById('profile-main-section').classList.remove('hidden');
+      document.getElementById('profile-message').textContent = '';
+      // Reset clock-in/out/break buttons
+      document.getElementById('clock-in-btn').disabled = false;
+      document.getElementById('start-break-btn').disabled = true;
+      document.getElementById('end-break-btn').disabled = true;
+      document.getElementById('clock-out-btn').disabled = true;
+      document.getElementById('shift-status').textContent = '';
+      currentShift = null;
+    }
+    function renderShiftHistory(profileKey) {
+      const profiles = getProfiles();
+      const shifts = profiles[profileKey]?.history || [];
+      const cont = document.getElementById('profile-shift-history');
+      if(!cont) return;
+      if(!shifts || shifts.length === 0) {
+        cont.innerHTML = "<em>No shifts yet.</em>";
+        return;
+      }
+      // No edit/add/delete for regular users, just display
+      cont.innerHTML = shifts.map((s,i) => `
+        <div class="shift-history-block">
+          <b>Shift #${shifts.length-i}</b> (${s.date})
+          <ul>
+            <li><b>Clocked In:</b> ${s.clockIn || "-"}</li>
+            <li><b>Break Start:</b> ${s.breakStart || "-"}</li>
+            <li><b>Break End:</b> ${s.breakEnd || "-"}</li>
+            <li><b>Clocked Out:</b> ${s.clockOut || "-"}</li>
+          </ul>
+        </div>
+      `).join('');
+    }
+    function saveCurrentProfileField(field, value) {
+      if (!currentProfileKey) return;
+      const profiles = getProfiles();
+      profiles[currentProfileKey][field] = value;
+      setProfiles(profiles);
+    }
+    // Profile login form
+    document.getElementById('profile-login-form').onsubmit = function(e) {
+      e.preventDefault();
+      const username = document.getElementById('profile-login-username').value.trim();
+      const password = document.getElementById('profile-login-password').value;
+      const profileObj = getProfileByUsername(username);
+      if (profileObj && profileObj.password === password) {
+        showProfileMain(profileObj.key);
+      } else {
+        document.getElementById('profile-login-message').textContent = "Invalid username or password.";
+      }
+    };
+    document.getElementById('profile-logout-btn').onclick = showProfileLogin;
+    // Profile field edit/save/cancel logic
+    function enableEdit(field) {
+      document.getElementById(`profile-${field}-display`).classList.add('hidden');
+      document.getElementById(`profile-${field}-edit`).classList.remove('hidden');
+      document.getElementById(`edit-profile-${field}-btn`).classList.add('hidden');
+      document.getElementById(`save-profile-${field}-btn`).classList.remove('hidden');
+      document.getElementById(`cancel-profile-${field}-btn`).classList.remove('hidden');
+    }
+    function disableEdit(field) {
+      document.getElementById(`profile-${field}-display`).classList.remove('hidden');
+      document.getElementById(`profile-${field}-edit`).classList.add('hidden');
+      document.getElementById(`edit-profile-${field}-btn`).classList.remove('hidden');
+      document.getElementById(`save-profile-${field}-btn`).classList.add('hidden');
+      document.getElementById(`cancel-profile-${field}-btn`).classList.add('hidden');
+    }
+    function saveField(field) {
+      let value;
+      if(field==="experience") {
+        value = document.getElementById(`profile-${field}-edit`).value;
+        document.getElementById(`profile-${field}-display`).textContent = value;
+      } else {
+        value = document.getElementById(`profile-${field}-edit`).value;
+        document.getElementById(`profile-${field}-display`).textContent = value;
+      }
+      saveCurrentProfileField(field, value);
+      disableEdit(field);
+      document.getElementById('profile-message').textContent = "Saved!";
+      setTimeout(()=>document.getElementById('profile-message').textContent="", 1200);
+    }
+    ['name','schedule','lunch','experience'].forEach(field => {
+      document.getElementById(`edit-profile-${field}-btn`).onclick = ()=>enableEdit(field);
+      document.getElementById(`cancel-profile-${field}-btn`).onclick = ()=>disableEdit(field);
+      document.getElementById(`save-profile-${field}-btn`).onclick = ()=>saveField(field);
+    });
 
-// ====== Shift clock in/out/break logic for regular users ======
-document.getElementById('clock-in-btn').onclick = function() {
-  if(currentShift) return;
-  const now = new Date();
-  currentShift = {
-    date: now.toLocaleDateString(),
-    clockIn: now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-    breakStart: null,
-    breakEnd: null,
-    clockOut: null
-  };
-  this.disabled = true;
-  document.getElementById('start-break-btn').disabled = false;
-  document.getElementById('end-break-btn').disabled = true;
-  document.getElementById('clock-out-btn').disabled = false;
-  document.getElementById('shift-status').textContent = "Shift started at " + currentShift.clockIn;
-};
-document.getElementById('start-break-btn').onclick = function() {
-  if(!currentShift || currentShift.breakStart) return;
-  const now = new Date();
-  currentShift.breakStart = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  this.disabled = true;
-  document.getElementById('end-break-btn').disabled = false;
-  document.getElementById('shift-status').textContent = "Break started at " + currentShift.breakStart;
-};
-document.getElementById('end-break-btn').onclick = function() {
-  if(!currentShift || !currentShift.breakStart || currentShift.breakEnd) return;
-  const now = new Date();
-  currentShift.breakEnd = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  this.disabled = true;
-  document.getElementById('shift-status').textContent = "Break ended at " + currentShift.breakEnd;
-};
-document.getElementById('clock-out-btn').onclick = function() {
-  if(!currentShift || currentShift.clockOut) return;
-  const now = new Date();
-  currentShift.clockOut = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  updateProfileHistory(currentProfileKey, currentShift);
-  renderShiftHistory(currentProfileKey);
-  document.getElementById('clock-in-btn').disabled = false;
-  document.getElementById('start-break-btn').disabled = true;
-  document.getElementById('end-break-btn').disabled = true;
-  this.disabled = true;
-  document.getElementById('shift-status').textContent = "Clocked out at " + currentShift.clockOut + ". Shift saved!";
-  currentShift = null;
-};
+    // ====== Shift clock in/out/break logic for regular users ======
+    document.getElementById('clock-in-btn').onclick = function() {
+      if(currentShift) return;
+      const now = new Date();
+      currentShift = {
+        date: now.toLocaleDateString(),
+        clockIn: now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+        breakStart: null,
+        breakEnd: null,
+        clockOut: null
+      };
+      this.disabled = true;
+      document.getElementById('start-break-btn').disabled = false;
+      document.getElementById('end-break-btn').disabled = true;
+      document.getElementById('clock-out-btn').disabled = false;
+      document.getElementById('shift-status').textContent = "Shift started at " + currentShift.clockIn;
+    };
+    document.getElementById('start-break-btn').onclick = function() {
+      if(!currentShift || currentShift.breakStart) return;
+      const now = new Date();
+      currentShift.breakStart = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      this.disabled = true;
+      document.getElementById('end-break-btn').disabled = false;
+      document.getElementById('shift-status').textContent = "Break started at " + currentShift.breakStart;
+    };
+    document.getElementById('end-break-btn').onclick = function() {
+      if(!currentShift || !currentShift.breakStart || currentShift.breakEnd) return;
+      const now = new Date();
+      currentShift.breakEnd = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      this.disabled = true;
+      document.getElementById('shift-status').textContent = "Break ended at " + currentShift.breakEnd;
+    };
+    document.getElementById('clock-out-btn').onclick = function() {
+      if(!currentShift || currentShift.clockOut) return;
+      const now = new Date();
+      currentShift.clockOut = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      updateProfileHistory(currentProfileKey, currentShift);
+      renderShiftHistory(currentProfileKey);
+      document.getElementById('clock-in-btn').disabled = false;
+      document.getElementById('start-break-btn').disabled = true;
+      document.getElementById('end-break-btn').disabled = true;
+      this.disabled = true;
+      document.getElementById('shift-status').textContent = "Clocked out at " + currentShift.clockOut + ". Shift saved!";
+      currentShift = null;
+    };
 
-// ========== NAVIGATION ==========
-function hideAllDetails() {
-  [
-    "shifts-details", "announcements-details", "hire-details", 
-    "admin-details", "calendar-details", "profile-details-section"
-  ].forEach(id => {
-    var e = document.getElementById(id);
-    if(e) e.classList.add("hidden");
-  });
-  [
-    "shifts-square", "announcements-square", "hire-square", 
-    "admin-square", "calendar-square", "profile-square"
-  ].forEach(id => {
-    var e = document.getElementById(id);
-    if(e) e.classList.remove("selected");
-  });
-}
-document.getElementById('shifts-square').onclick = function() {
-  hideAllDetails(); document.getElementById('shifts-details').classList.remove('hidden');
-  this.classList.add('selected');
-  renderShiftSquares();
-  document.getElementById('profile-details').innerHTML = `<h3>Click a profile to see shift details</h3>`;
-};
-document.getElementById('announcements-square').onclick = function() {
-  hideAllDetails(); document.getElementById('announcements-details').classList.remove('hidden');
-  this.classList.add('selected');
-  renderAnnouncements();
-};
-document.getElementById('hire-square').onclick = function() {
-  hideAllDetails(); document.getElementById('hire-details').classList.remove('hidden');
-  this.classList.add('selected');
-};
-document.getElementById('admin-square').onclick = function() {
-  hideAllDetails(); document.getElementById('admin-details').classList.remove('hidden');
-  this.classList.add('selected');
-  document.getElementById('admin-login').classList.remove('hidden');
-  document.getElementById('admin-panel').classList.add('hidden');
-  document.getElementById('admin-login-message').textContent = '';
-  document.getElementById('admin-code').value = '';
-};
-document.getElementById('calendar-square').onclick = function() {
-  hideAllDetails();
-  document.getElementById('calendar-details').classList.remove('hidden');
-  this.classList.add('selected');
-  // You should call your renderCalendar function here (not included in this snippet)
-};
-document.getElementById('profile-square').onclick = function() {
-  hideAllDetails();
-  document.getElementById('profile-details-section').classList.remove('hidden');
-  this.classList.add('selected');
-  showProfileLogin();
-};
+    // ========== NAVIGATION ==========
+    function hideAllDetails() {
+      [
+        "shifts-details", "announcements-details", "hire-details", 
+        "admin-details", "calendar-details", "profile-details-section"
+      ].forEach(id => {
+        var e = document.getElementById(id);
+        if(e) e.classList.add("hidden");
+      });
+      [
+        "shifts-square", "announcements-square", "hire-square", 
+        "admin-square", "calendar-square", "profile-square"
+      ].forEach(id => {
+        var e = document.getElementById(id);
+        if(e) e.classList.remove("selected");
+      });
+    }
+    document.getElementById('shifts-square').onclick = function() {
+      hideAllDetails(); document.getElementById('shifts-details').classList.remove('hidden');
+      this.classList.add('selected');
+      renderShiftSquares();
+      document.getElementById('profile-details').innerHTML = `<h3>Click a profile to see shift details</h3>`;
+    };
+    document.getElementById('announcements-square').onclick = function() {
+      hideAllDetails(); document.getElementById('announcements-details').classList.remove('hidden');
+      this.classList.add('selected');
+      renderAnnouncements();
+    };
+    document.getElementById('hire-square').onclick = function() {
+      hideAllDetails(); document.getElementById('hire-details').classList.remove('hidden');
+      this.classList.add('selected');
+    };
+    document.getElementById('admin-square').onclick = function() {
+      hideAllDetails(); document.getElementById('admin-details').classList.remove('hidden');
+      this.classList.add('selected');
+      document.getElementById('admin-login').classList.remove('hidden');
+      document.getElementById('admin-panel').classList.add('hidden');
+      document.getElementById('admin-login-message').textContent = '';
+      document.getElementById('admin-code').value = '';
+    };
+    document.getElementById('calendar-square').onclick = function() {
+      hideAllDetails();
+      document.getElementById('calendar-details').classList.remove('hidden');
+      this.classList.add('selected');
+      // You should call your renderCalendar function here (not included in this snippet)
+    };
+    document.getElementById('profile-square').onclick = function() {
+      hideAllDetails();
+      document.getElementById('profile-details-section').classList.remove('hidden');
+      this.classList.add('selected');
+      showProfileLogin();
+    };
+  </script>
 </body>
 </html>
