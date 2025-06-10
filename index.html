@@ -731,6 +731,7 @@ function renderShiftHistory(profileKey) {
     cont.innerHTML = "<em>No shifts yet.</em>";
     return;
   }
+  // No edit/add/delete for regular users, just display
   cont.innerHTML = shifts.map((s,i) => `
     <div class="shift-history-block">
       <b>Shift #${shifts.length-i}</b> (${s.date})
@@ -740,12 +741,8 @@ function renderShiftHistory(profileKey) {
         <li><b>Break End:</b> ${s.breakEnd || "-"}</li>
         <li><b>Clocked Out:</b> ${s.clockOut || "-"}</li>
       </ul>
-      <button class="edit-shift-history-btn" data-idx="${i}" style="margin-top:3px;">Edit</button>
     </div>
   `).join('');
-  Array.from(cont.querySelectorAll('.edit-shift-history-btn')).forEach(btn => {
-    btn.onclick = ()=>startEditShiftHistory(parseInt(btn.dataset.idx,10));
-  });
 }
 function saveCurrentProfileField(field, value) {
   if (!currentProfileKey) return;
@@ -800,78 +797,8 @@ function saveField(field) {
   document.getElementById(`cancel-profile-${field}-btn`).onclick = ()=>disableEdit(field);
   document.getElementById(`save-profile-${field}-btn`).onclick = ()=>saveField(field);
 });
-// Shift history editing
-let editingShiftIdx = null;
-function startEditShiftHistory(idx) {
-  editingShiftIdx = idx;
-  const profiles = getProfiles();
-  const hist = profiles[currentProfileKey]?.history || [];
-  const shift = hist[idx];
-  document.getElementById('shift-edit-date').value = shift.date ? shift.date.split("T")[0] : "";
-  document.getElementById('shift-edit-in').value = shift.clockIn || "";
-  document.getElementById('shift-edit-breakstart').value = shift.breakStart || "";
-  document.getElementById('shift-edit-breakend').value = shift.breakEnd || "";
-  document.getElementById('shift-edit-out').value = shift.clockOut || "";
-  document.getElementById('edit-shift-history-modal').classList.remove('hidden');
-}
-document.getElementById('cancel-shift-edit-btn').onclick = function() {
-  document.getElementById('edit-shift-history-modal').classList.add('hidden');
-  editingShiftIdx = null;
-};
-document.getElementById('delete-shift-edit-btn').onclick = function() {
-  if(editingShiftIdx==null) return;
-  if(!confirm("Delete this shift entry?")) return;
-  const profiles = getProfiles();
-  profiles[currentProfileKey].history.splice(editingShiftIdx,1);
-  setProfiles(profiles);
-  renderShiftHistory(currentProfileKey);
-  document.getElementById('edit-shift-history-modal').classList.add('hidden');
-  editingShiftIdx = null;
-};
-document.getElementById('shift-history-edit-form').onsubmit = function(e) {
-  e.preventDefault();
-  if(editingShiftIdx==null) return;
-  const profiles = getProfiles();
-  profiles[currentProfileKey].history[editingShiftIdx] = {
-    date: document.getElementById('shift-edit-date').value,
-    clockIn: document.getElementById('shift-edit-in').value,
-    breakStart: document.getElementById('shift-edit-breakstart').value,
-    breakEnd: document.getElementById('shift-edit-breakend').value,
-    clockOut: document.getElementById('shift-edit-out').value
-  };
-  setProfiles(profiles);
-  renderShiftHistory(currentProfileKey);
-  document.getElementById('edit-shift-history-modal').classList.add('hidden');
-  editingShiftIdx = null;
-};
-document.getElementById('add-shift-entry-btn').onclick = function() {
-  editingShiftIdx = null;
-  document.getElementById('shift-edit-date').value = "";
-  document.getElementById('shift-edit-in').value = "";
-  document.getElementById('shift-edit-breakstart').value = "";
-  document.getElementById('shift-edit-breakend').value = "";
-  document.getElementById('shift-edit-out').value = "";
-  document.getElementById('edit-shift-history-modal').classList.remove('hidden');
-  document.getElementById('shift-history-edit-form').onsubmit = function(e) {
-    e.preventDefault();
-    const profiles = getProfiles();
-    const newEntry = {
-      date: document.getElementById('shift-edit-date').value,
-      clockIn: document.getElementById('shift-edit-in').value,
-      breakStart: document.getElementById('shift-edit-breakstart').value,
-      breakEnd: document.getElementById('shift-edit-breakend').value,
-      clockOut: document.getElementById('shift-edit-out').value
-    };
-    profiles[currentProfileKey].history.unshift(newEntry);
-    setProfiles(profiles);
-    renderShiftHistory(currentProfileKey);
-    document.getElementById('edit-shift-history-modal').classList.add('hidden');
-  };
-  document.getElementById('delete-shift-edit-btn').onclick = function() {
-    document.getElementById('edit-shift-history-modal').classList.add('hidden');
-  }
-};
-// Profile clock-in/out/break/shift logic
+
+// ====== Shift clock in/out/break logic for regular users ======
 document.getElementById('clock-in-btn').onclick = function() {
   if(currentShift) return;
   const now = new Date();
@@ -969,157 +896,5 @@ document.getElementById('profile-square').onclick = function() {
   this.classList.add('selected');
   showProfileLogin();
 };
-
-// ========== ADMIN PANEL LOGIC ==========
-
-// Admin login
-document.getElementById('admin-login-btn').onclick = function() {
-  const code = document.getElementById('admin-code').value;
-  if (code === getAdminCode()) {
-    document.getElementById('admin-login').classList.add('hidden');
-    document.getElementById('admin-panel').classList.remove('hidden');
-    renderAdminAnnouncements();
-    renderAdminWorkers();
-    renderAdminSubmissions();
-    renderAdminProfiles();
-    // renderAdminCalendarEvents(); // you can implement this for calendar events
-  } else {
-    document.getElementById('admin-login-message').textContent = 'Incorrect admin code.';
-  }
-};
-
-// Admin: Change admin code
-document.getElementById('change-admin-code-btn').onclick = function() {
-  const newCode = document.getElementById('new-admin-code').value;
-  if (!newCode || newCode.length < 2) {
-    document.getElementById('admin-code-message').textContent = 'Admin code too short.';
-    return;
-  }
-  setAdminCode(newCode);
-  document.getElementById('admin-code-message').textContent = 'Admin code changed!';
-  setTimeout(() => document.getElementById('admin-code-message').textContent = '', 1500);
-};
-
-// Admin: Announcements
-document.getElementById('admin-add-announcement-btn').onclick = function() {
-  const val = document.getElementById('admin-new-announcement').value.trim();
-  if (!val) return;
-  const list = getAnnouncements();
-  list.push(val);
-  setAnnouncements(list);
-  document.getElementById('admin-new-announcement').value = '';
-  renderAdminAnnouncements();
-};
-document.getElementById('admin-announcements-list').onclick = function(e) {
-  if (e.target.classList.contains('delete-announcement-btn')) {
-    const idx = +e.target.getAttribute('data-idx');
-    const list = getAnnouncements();
-    list.splice(idx, 1);
-    setAnnouncements(list);
-    renderAdminAnnouncements();
-  }
-};
-
-// Admin: Workers
-document.getElementById('add-worker-btn').onclick = function() {
-  document.getElementById('add-worker-form').classList.remove('hidden');
-};
-document.getElementById('cancel-new-worker-btn').onclick = function() {
-  document.getElementById('add-worker-form').classList.add('hidden');
-};
-document.getElementById('save-new-worker-btn').onclick = function() {
-  const name = document.getElementById('new-worker-name').value.trim();
-  const shift = document.getElementById('new-worker-shift').value.trim();
-  const tasks = document.getElementById('new-worker-tasks').value.split(',').map(s => s.trim()).filter(Boolean);
-  if (!name || !shift) return;
-  const workers = getWorkers();
-  workers.push({ name, shift, tasks });
-  setWorkers(workers);
-  document.getElementById('add-worker-form').classList.add('hidden');
-  renderAdminWorkers();
-};
-document.getElementById('admin-workers-list').onclick = function(e) {
-  if (e.target.classList.contains('edit-worker-btn')) {
-    const idx = e.target.getAttribute('data-idx');
-    document.getElementById(`edit-worker-form-${idx}`).classList.remove('hidden');
-  }
-  if (e.target.classList.contains('cancel-edit-worker-btn')) {
-    const idx = e.target.getAttribute('data-idx');
-    document.getElementById(`edit-worker-form-${idx}`).classList.add('hidden');
-  }
-  if (e.target.classList.contains('save-edit-worker-btn')) {
-    const idx = e.target.getAttribute('data-idx');
-    const form = document.getElementById(`edit-worker-form-${idx}`);
-    const name = form.querySelector('.edit-worker-name').value.trim();
-    const shift = form.querySelector('.edit-worker-shift').value.trim();
-    const tasks = form.querySelector('.edit-worker-tasks-input').value.split(',').map(x=>x.trim()).filter(Boolean);
-    const workers = getWorkers();
-    workers[idx] = { name, shift, tasks };
-    setWorkers(workers);
-    renderAdminWorkers();
-  }
-  if (e.target.classList.contains('delete-worker-btn')) {
-    const idx = e.target.getAttribute('data-idx');
-    if (!confirm("Delete this worker?")) return;
-    const workers = getWorkers();
-    workers.splice(idx, 1);
-    setWorkers(workers);
-    renderAdminWorkers();
-  }
-};
-
-// Admin: Submissions
-document.getElementById('submissions-list').onclick = function(e) {
-  if (e.target.classList.contains('delete-submission-btn')) {
-    const idx = +e.target.getAttribute('data-idx');
-    const subs = getSubmissions();
-    subs.splice(idx, 1);
-    setSubmissions(subs);
-    renderAdminSubmissions();
-  }
-};
-
-// Admin: Profile passwords (simple reset/display)
-function renderAdminProfilePasswords() {
-  const profiles = getProfiles();
-  const container = document.getElementById('admin-profile-passwords');
-  container.innerHTML = '';
-  Object.entries(profiles).forEach(([key, profile]) => {
-    const div = document.createElement('div');
-    div.innerHTML = `
-      <b>${profile.username}:</b> 
-      <input type="text" id="admin-pw-${key}" value="${profile.password}" style="width:120px;">
-      <button onclick="(function(){const ps=getProfiles();ps['${key}'].password=document.getElementById('admin-pw-${key}').value;setProfiles(ps);alert('Password updated!');})()">Save</button>
-    `;
-    container.appendChild(div);
-  });
-}
-renderAdminProfilePasswords();
-
-// ========== HIRE FORM ==========
-document.getElementById('hire-form').onsubmit = function(e) {
-  e.preventDefault();
-  const data = {};
-  Array.from(this.elements).forEach(el => {
-    if (el.name) data[el.name] = el.value;
-  });
-  saveSubmission(data);
-  this.reset();
-  document.getElementById('form-message').textContent = "Application submitted!";
-  setTimeout(()=>document.getElementById('form-message').textContent="", 1400);
-};
-
-// ========== INITIALIZE ==========
-renderShiftSquares();
-renderAnnouncements();
-renderAdminWorkers();
-renderAdminAnnouncements();
-renderAdminSubmissions();
-renderAdminProfiles();
-renderAdminProfilePasswords();
-// If you have calendar and other sections, call their render functions here as well!
-
-// ========== END OF DASHBOARD ==========
-</script>
 </body>
 </html>
